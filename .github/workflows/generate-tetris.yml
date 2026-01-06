@@ -1,0 +1,35 @@
+name: Generate Tetris Animation
+
+on:
+  schedule:
+    # Regenerate every 6 hours for variety
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Generate Tetris SVG
+        run: python generate-tetris.py
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add tetris-contribution.svg
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Tetris animation" && git push)
