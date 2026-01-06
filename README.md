@@ -1,9 +1,9 @@
 # Hi, I'm Shray Soorma
 
 <p align="center">
-  <img src="./tetris-contribution.svg" alt="Tetris Contribution Animation" />
+  <img src="./tetris-contribution.svg" alt="Retro Arcade Tetris" />
 </p>
 
 <p align="center">
-  <i>Enjoy this game of Tetris!</i>
+  <b>INSERT COIN TO PLAY</b>
 </p>

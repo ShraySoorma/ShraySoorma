@@ -1,24 +1,18 @@
 #!/usr/bin/env python3
 """
-Generate an animated SVG of a real Tetris game simulation with proper rules:
-- Pieces fall and stack
-- Collision detection
-- Line clearing
-- Game restarts when board fills up
+Generate a retro pixel art arcade cabinet SVG with animated Tetris game inside.
+8-bit aesthetic with scanlines, glow effects, and neon colors.
 """
 
 import random
 import copy
 
-# Board dimensions (wider for better gameplay, height for Tetris)
-COLS = 10
-ROWS = 20
-CELL_SIZE = 12
-CELL_GAP = 2
-TOTAL_CELL = CELL_SIZE + CELL_GAP
+# Tetris game settings (inside the arcade screen)
+GAME_COLS = 10
+GAME_ROWS = 16
+PIXEL_SIZE = 6
 
-# Tetris piece definitions (row, col offsets from origin)
-# Standard Tetris rotation system
+# Tetris pieces with rotations
 PIECES = {
     'I': [[(0, 0), (0, 1), (0, 2), (0, 3)],
           [(0, 0), (1, 0), (2, 0), (3, 0)]],
@@ -41,23 +35,24 @@ PIECES = {
           [(0, 0), (0, 1), (1, 1), (2, 1)]],
 }
 
+# Retro neon colors
 PIECE_COLORS = {
-    'I': '#00f0f0',
-    'O': '#f0f000',
-    'T': '#a000f0',
-    'S': '#00f000',
-    'Z': '#f00000',
-    'J': '#0000f0',
-    'L': '#f0a000',
+    'I': '#00ffff',
+    'O': '#ffff00',
+    'T': '#ff00ff',
+    'S': '#00ff00',
+    'Z': '#ff0000',
+    'J': '#0080ff',
+    'L': '#ff8000',
 }
 
-EMPTY_COLOR = '#161b22'
-GRID_COLOR = '#21262d'
+EMPTY_COLOR = '#1a1a2e'
+SCREEN_BG = '#0f0f1a'
 
 
 class TetrisGame:
     def __init__(self):
-        self.board = [[None for _ in range(COLS)] for _ in range(ROWS)]
+        self.board = [[None for _ in range(GAME_COLS)] for _ in range(GAME_ROWS)]
         self.current_piece = None
         self.current_type = None
         self.current_rotation = 0
@@ -65,42 +60,35 @@ class TetrisGame:
         self.current_col = 0
         self.frames = []
         self.lines_cleared = 0
+        self.score = 0
 
     def spawn_piece(self):
-        """Spawn a new piece at the top."""
         self.current_type = random.choice(list(PIECES.keys()))
         self.current_rotation = 0
         self.current_piece = PIECES[self.current_type][self.current_rotation]
         self.current_row = 0
-        self.current_col = COLS // 2 - 2
-
-        # Check if spawn position is valid (game over condition)
+        self.current_col = GAME_COLS // 2 - 2
         if not self.is_valid_position(self.current_row, self.current_col):
             return False
         return True
 
     def is_valid_position(self, row, col, piece=None):
-        """Check if piece position is valid."""
         if piece is None:
             piece = self.current_piece
         for dr, dc in piece:
             r, c = row + dr, col + dc
-            if r < 0 or r >= ROWS or c < 0 or c >= COLS:
+            if r < 0 or r >= GAME_ROWS or c < 0 or c >= GAME_COLS:
                 return False
             if r >= 0 and self.board[r][c] is not None:
                 return False
         return True
 
     def try_rotate(self):
-        """Try to rotate the current piece."""
         if self.current_type == 'O':
             return False
-
         rotations = PIECES[self.current_type]
         new_rotation = (self.current_rotation + 1) % len(rotations)
         new_piece = rotations[new_rotation]
-
-        # Try rotation, with wall kicks
         for offset in [0, -1, 1, -2, 2]:
             if self.is_valid_position(self.current_row, self.current_col + offset, new_piece):
                 self.current_rotation = new_rotation
@@ -110,7 +98,6 @@ class TetrisGame:
         return False
 
     def try_move(self, d_row, d_col):
-        """Try to move the piece."""
         new_row = self.current_row + d_row
         new_col = self.current_col + d_col
         if self.is_valid_position(new_row, new_col):
@@ -120,116 +107,135 @@ class TetrisGame:
         return False
 
     def lock_piece(self):
-        """Lock the current piece into the board."""
         for dr, dc in self.current_piece:
             r, c = self.current_row + dr, self.current_col + dc
-            if 0 <= r < ROWS:
+            if 0 <= r < GAME_ROWS:
                 self.board[r][c] = self.current_type
 
     def clear_lines(self):
-        """Clear completed lines and return count."""
         lines_to_clear = []
-        for r in range(ROWS):
-            if all(self.board[r][c] is not None for c in range(COLS)):
+        for r in range(GAME_ROWS):
+            if all(self.board[r][c] is not None for c in range(GAME_COLS)):
                 lines_to_clear.append(r)
-
         for r in lines_to_clear:
             del self.board[r]
-            self.board.insert(0, [None for _ in range(COLS)])
-
+            self.board.insert(0, [None for _ in range(GAME_COLS)])
+        if lines_to_clear:
+            self.score += len(lines_to_clear) * 100
         return len(lines_to_clear)
 
     def capture_frame(self):
-        """Capture current game state as a frame."""
         frame = {
             'board': copy.deepcopy(self.board),
             'piece_type': self.current_type,
             'piece': copy.deepcopy(self.current_piece) if self.current_piece else None,
             'piece_row': self.current_row,
             'piece_col': self.current_col,
+            'score': self.score,
         }
         self.frames.append(frame)
 
-    def simulate_game(self, num_pieces=50):
-        """Simulate a full game."""
+    def simulate_game(self, num_pieces=35):
         self.frames = []
-
         for _ in range(num_pieces):
             if not self.spawn_piece():
-                # Game over - reset board
-                self.board = [[None for _ in range(COLS)] for _ in range(ROWS)]
+                self.board = [[None for _ in range(GAME_COLS)] for _ in range(GAME_ROWS)]
+                self.score = 0
                 self.spawn_piece()
-
             self.capture_frame()
-
-            # Simulate piece falling with occasional moves/rotations
             while True:
-                # Random actions for variety
                 action = random.random()
-                if action < 0.15:
-                    self.try_move(0, -1)  # Move left
-                elif action < 0.30:
-                    self.try_move(0, 1)   # Move right
-                elif action < 0.40:
+                if action < 0.2:
+                    self.try_move(0, -1)
+                elif action < 0.4:
+                    self.try_move(0, 1)
+                elif action < 0.5:
                     self.try_rotate()
-
                 self.capture_frame()
-
-                # Try to move down
                 if not self.try_move(1, 0):
-                    # Can't move down, lock piece
                     self.lock_piece()
                     cleared = self.clear_lines()
                     self.lines_cleared += cleared
-
-                    # Capture frame after locking (and line clear)
                     self.current_piece = None
                     self.capture_frame()
                     break
-
         return self.frames
 
 
-def create_svg(frames, frame_duration=0.08):
-    """Create animated SVG from game frames."""
-    width = COLS * TOTAL_CELL + 20
-    height = ROWS * TOTAL_CELL + 40
+def create_arcade_svg(frames, frame_duration=0.12):
+    """Create retro arcade cabinet SVG with animated Tetris."""
+
+    # Cabinet dimensions
+    cab_width = 200
+    cab_height = 320
+
+    # Screen area (inside cabinet)
+    screen_x = 30
+    screen_y = 40
+    screen_width = GAME_COLS * PIXEL_SIZE + 20
+    screen_height = GAME_ROWS * PIXEL_SIZE + 40
+
     total_duration = len(frames) * frame_duration
 
-    svg_parts = []
-    svg_parts.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">')
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{cab_width}" height="{cab_height}" viewBox="0 0 {cab_width} {cab_height}">
+  <defs>
+    <!-- Scanline pattern -->
+    <pattern id="scanlines" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="2" fill="rgba(0,0,0,0.3)"/>
+    </pattern>
 
-    # Styles
-    svg_parts.append('<style>')
-    svg_parts.append('  .cell { rx: 2; ry: 2; }')
-    svg_parts.append('  text { font-family: monospace; }')
-    svg_parts.append('</style>')
+    <!-- Screen glow -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
 
-    # Background
-    svg_parts.append(f'<rect width="{width}" height="{height}" fill="#0d1117"/>')
+    <!-- Neon glow for text -->
+    <filter id="neon" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
 
-    # Title
-    svg_parts.append(f'<text x="{width/2}" y="15" fill="#58a6ff" font-size="11" text-anchor="middle" font-weight="bold">TETRIS</text>')
+  <!-- Cabinet body -->
+  <rect x="10" y="10" width="180" height="300" rx="8" fill="#2d1b4e"/>
+  <rect x="15" y="15" width="170" height="290" rx="6" fill="#1a0f2e"/>
 
-    # Grid background
-    svg_parts.append('<g transform="translate(10, 25)">')
-    for row in range(ROWS):
-        for col in range(COLS):
-            x = col * TOTAL_CELL
-            y = row * TOTAL_CELL
-            svg_parts.append(f'<rect class="cell" x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" fill="{GRID_COLOR}" opacity="0.3"/>')
-    svg_parts.append('</g>')
+  <!-- Cabinet top decoration -->
+  <rect x="20" y="12" width="160" height="20" rx="3" fill="#ff00ff" opacity="0.8"/>
+  <text x="100" y="27" fill="#ffffff" font-family="monospace" font-size="12" text-anchor="middle" font-weight="bold" filter="url(#neon)">TETRIS</text>
 
-    # Animated cells - use CSS keyframes for each cell position
-    svg_parts.append('<g transform="translate(10, 25)">')
+  <!-- Screen bezel -->
+  <rect x="{screen_x - 8}" y="{screen_y - 8}" width="{screen_width + 16}" height="{screen_height + 16}" rx="4" fill="#0a0a0a"/>
+  <rect x="{screen_x - 4}" y="{screen_y - 4}" width="{screen_width + 8}" height="{screen_height + 8}" rx="2" fill="#1a1a1a"/>
 
-    # For each cell position, create keyframes based on what's there each frame
-    for row in range(ROWS):
-        for col in range(COLS):
-            x = col * TOTAL_CELL
-            y = row * TOTAL_CELL
+  <!-- Screen background -->
+  <rect x="{screen_x}" y="{screen_y}" width="{screen_width}" height="{screen_height}" fill="{SCREEN_BG}" rx="2"/>
 
-            # Build keyframe values for this cell
+  <!-- Game title on screen -->
+  <text x="{screen_x + screen_width/2}" y="{screen_y + 12}" fill="#00ffff" font-family="monospace" font-size="8" text-anchor="middle" filter="url(#glow)">TETRIS</text>
+
+  <!-- Score display -->
+  <g id="score-display">
+    <text x="{screen_x + screen_width - 5}" y="{screen_y + 12}" fill="#ffff00" font-family="monospace" font-size="6" text-anchor="end">
+      <animate attributeName="opacity" values="1;0.7;1" dur="1s" repeatCount="indefinite"/>
+      SCORE
+    </text>
+  </g>
+
+  <!-- Game grid area -->
+  <g transform="translate({screen_x + 10}, {screen_y + 20})" filter="url(#glow)">
+'''
+
+    # Create animated cells
+    for row in range(GAME_ROWS):
+        for col in range(GAME_COLS):
+            x = col * PIXEL_SIZE
+            y = row * PIXEL_SIZE
+
             colors = []
             for frame in frames:
                 board = frame['board']
@@ -238,14 +244,11 @@ def create_svg(frames, frame_duration=0.08):
                 piece_col = frame['piece_col']
                 piece_type = frame['piece_type']
 
-                # Check if current piece occupies this cell
                 cell_color = EMPTY_COLOR
 
-                # First check board
                 if board[row][col] is not None:
                     cell_color = PIECE_COLORS[board[row][col]]
 
-                # Then check active piece
                 if piece is not None:
                     for dr, dc in piece:
                         pr, pc = piece_row + dr, piece_col + dc
@@ -255,31 +258,89 @@ def create_svg(frames, frame_duration=0.08):
 
                 colors.append(cell_color)
 
-            # Only create animated rect if colors change
             if len(set(colors)) > 1:
-                # Create keyframes string
                 keyframe_values = ';'.join(colors)
-                svg_parts.append(f'<rect class="cell" x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}">')
-                svg_parts.append(f'  <animate attributeName="fill" values="{keyframe_values}" dur="{total_duration}s" repeatCount="indefinite" calcMode="discrete"/>')
-                svg_parts.append('</rect>')
+                svg += f'''    <rect x="{x}" y="{y}" width="{PIXEL_SIZE-1}" height="{PIXEL_SIZE-1}" rx="1">
+      <animate attributeName="fill" values="{keyframe_values}" dur="{total_duration}s" repeatCount="indefinite" calcMode="discrete"/>
+    </rect>
+'''
             else:
-                # Static cell
-                svg_parts.append(f'<rect class="cell" x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" fill="{colors[0]}"/>')
+                svg += f'    <rect x="{x}" y="{y}" width="{PIXEL_SIZE-1}" height="{PIXEL_SIZE-1}" rx="1" fill="{colors[0]}"/>\n'
 
-    svg_parts.append('</g>')
-    svg_parts.append('</svg>')
+    svg += f'''  </g>
 
-    return '\n'.join(svg_parts)
+  <!-- Scanlines overlay -->
+  <rect x="{screen_x}" y="{screen_y}" width="{screen_width}" height="{screen_height}" fill="url(#scanlines)" opacity="0.15"/>
+
+  <!-- Screen reflection -->
+  <ellipse cx="{screen_x + 20}" cy="{screen_y + 15}" rx="15" ry="8" fill="white" opacity="0.05"/>
+
+  <!-- Control panel -->
+  <rect x="25" y="195" width="150" height="60" rx="5" fill="#1a0f2e"/>
+  <rect x="30" y="200" width="140" height="50" rx="3" fill="#2d1b4e"/>
+
+  <!-- Joystick -->
+  <circle cx="60" cy="225" r="15" fill="#0a0a0a"/>
+  <circle cx="60" cy="225" r="12" fill="#1a1a1a"/>
+  <circle cx="60" cy="223" r="8" fill="#ff0000">
+    <animate attributeName="cy" values="223;225;223" dur="0.5s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Buttons -->
+  <circle cx="110" cy="220" r="10" fill="#ff00ff" filter="url(#glow)">
+    <animate attributeName="opacity" values="1;0.6;1" dur="0.3s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="135" cy="225" r="10" fill="#00ffff" filter="url(#glow)">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="0.3s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="155" cy="215" r="8" fill="#ffff00" filter="url(#glow)"/>
+
+  <!-- Button labels -->
+  <text x="110" y="223" fill="#000" font-family="monospace" font-size="6" text-anchor="middle">A</text>
+  <text x="135" y="228" fill="#000" font-family="monospace" font-size="6" text-anchor="middle">B</text>
+
+  <!-- Coin slot area -->
+  <rect x="60" y="265" width="80" height="25" rx="3" fill="#0a0a0a"/>
+  <rect x="85" y="270" width="30" height="4" rx="1" fill="#333"/>
+  <text x="100" y="288" fill="#ffff00" font-family="monospace" font-size="6" text-anchor="middle">INSERT COIN</text>
+
+  <!-- Cabinet legs -->
+  <rect x="20" y="295" width="25" height="20" fill="#1a0f2e"/>
+  <rect x="155" y="295" width="25" height="20" fill="#1a0f2e"/>
+
+  <!-- Side art decorations -->
+  <line x1="15" y1="100" x2="15" y2="250" stroke="#ff00ff" stroke-width="2" opacity="0.5"/>
+  <line x1="185" y1="100" x2="185" y2="250" stroke="#00ffff" stroke-width="2" opacity="0.5"/>
+
+  <!-- Animated marquee lights -->
+  <g>
+    <circle cx="25" cy="25" r="3" fill="#ff0000">
+      <animate attributeName="opacity" values="1;0.3;1" dur="0.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="175" cy="25" r="3" fill="#ff0000">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="0.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="50" cy="25" r="3" fill="#ffff00">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="0.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="150" cy="25" r="3" fill="#ffff00">
+      <animate attributeName="opacity" values="1;0.3;1" dur="0.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+</svg>'''
+
+    return svg
 
 
 if __name__ == '__main__':
     print("Simulating Tetris game...")
     game = TetrisGame()
-    frames = game.simulate_game(num_pieces=40)
+    frames = game.simulate_game(num_pieces=30)
     print(f"Generated {len(frames)} frames, cleared {game.lines_cleared} lines")
 
-    print("Creating SVG animation...")
-    svg_content = create_svg(frames, frame_duration=0.1)
+    print("Creating arcade cabinet SVG...")
+    svg_content = create_arcade_svg(frames, frame_duration=0.1)
 
     with open('tetris-contribution.svg', 'w') as f:
         f.write(svg_content)
