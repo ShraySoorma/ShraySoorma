@@ -4,5 +4,4 @@
 </p>
 
 <p align="center">
-  <b>INSERT COIN TO PLAY</b>
 </p>
