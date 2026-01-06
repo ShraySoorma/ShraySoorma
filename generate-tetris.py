@@ -1,36 +1,44 @@
 #!/usr/bin/env python3
 """
-Generate an animated SVG of Tetris playing on a GitHub contribution graph style grid.
+Generate an animated SVG of a real Tetris game simulation with proper rules:
+- Pieces fall and stack
+- Collision detection
+- Line clearing
+- Game restarts when board fills up
 """
 
 import random
-import math
+import copy
 
-# Contribution graph dimensions (52 weeks x 7 days)
-COLS = 52
-ROWS = 7
-CELL_SIZE = 11
-CELL_GAP = 3
+# Board dimensions (wider for better gameplay, height for Tetris)
+COLS = 10
+ROWS = 20
+CELL_SIZE = 12
+CELL_GAP = 2
 TOTAL_CELL = CELL_SIZE + CELL_GAP
 
-# Colors matching GitHub's contribution colors
-COLORS = {
-    'empty': '#161b22',
-    'level1': '#0e4429',
-    'level2': '#006d32',
-    'level3': '#26a641',
-    'level4': '#39d353',
-}
-
-# Tetris piece definitions (each piece as list of relative positions)
+# Tetris piece definitions (row, col offsets from origin)
+# Standard Tetris rotation system
 PIECES = {
-    'I': [(0, 0), (0, 1), (0, 2), (0, 3)],
-    'O': [(0, 0), (0, 1), (1, 0), (1, 1)],
-    'T': [(0, 0), (0, 1), (0, 2), (1, 1)],
-    'S': [(0, 1), (0, 2), (1, 0), (1, 1)],
-    'Z': [(0, 0), (0, 1), (1, 1), (1, 2)],
-    'J': [(0, 0), (1, 0), (1, 1), (1, 2)],
-    'L': [(0, 2), (1, 0), (1, 1), (1, 2)],
+    'I': [[(0, 0), (0, 1), (0, 2), (0, 3)],
+          [(0, 0), (1, 0), (2, 0), (3, 0)]],
+    'O': [[(0, 0), (0, 1), (1, 0), (1, 1)]],
+    'T': [[(0, 1), (1, 0), (1, 1), (1, 2)],
+          [(0, 0), (1, 0), (1, 1), (2, 0)],
+          [(0, 0), (0, 1), (0, 2), (1, 1)],
+          [(0, 1), (1, 0), (1, 1), (2, 1)]],
+    'S': [[(0, 1), (0, 2), (1, 0), (1, 1)],
+          [(0, 0), (1, 0), (1, 1), (2, 1)]],
+    'Z': [[(0, 0), (0, 1), (1, 1), (1, 2)],
+          [(0, 1), (1, 0), (1, 1), (2, 0)]],
+    'J': [[(0, 0), (1, 0), (1, 1), (1, 2)],
+          [(0, 0), (0, 1), (1, 0), (2, 0)],
+          [(0, 0), (0, 1), (0, 2), (1, 2)],
+          [(0, 1), (1, 1), (2, 0), (2, 1)]],
+    'L': [[(0, 2), (1, 0), (1, 1), (1, 2)],
+          [(0, 0), (1, 0), (2, 0), (2, 1)],
+          [(0, 0), (0, 1), (0, 2), (1, 0)],
+          [(0, 0), (0, 1), (1, 1), (2, 1)]],
 }
 
 PIECE_COLORS = {
@@ -43,210 +51,235 @@ PIECE_COLORS = {
     'L': '#f0a000',
 }
 
-
-def generate_base_grid():
-    """Generate a random contribution-style base grid."""
-    grid = []
-    for row in range(ROWS):
-        grid_row = []
-        for col in range(COLS):
-            # Random contribution levels with higher chance of empty
-            r = random.random()
-            if r < 0.4:
-                grid_row.append('empty')
-            elif r < 0.6:
-                grid_row.append('level1')
-            elif r < 0.75:
-                grid_row.append('level2')
-            elif r < 0.9:
-                grid_row.append('level3')
-            else:
-                grid_row.append('level4')
-        grid.append(grid_row)
-    return grid
+EMPTY_COLOR = '#161b22'
+GRID_COLOR = '#21262d'
 
 
-def generate_tetris_animation():
-    """Generate falling tetris pieces animation frames."""
-    frames = []
-    num_pieces = 8
-    frame_duration = 0.15
+class TetrisGame:
+    def __init__(self):
+        self.board = [[None for _ in range(COLS)] for _ in range(ROWS)]
+        self.current_piece = None
+        self.current_type = None
+        self.current_rotation = 0
+        self.current_row = 0
+        self.current_col = 0
+        self.frames = []
+        self.lines_cleared = 0
 
-    for piece_idx in range(num_pieces):
-        piece_type = random.choice(list(PIECES.keys()))
-        piece_shape = PIECES[piece_type]
-        piece_color = PIECE_COLORS[piece_type]
+    def spawn_piece(self):
+        """Spawn a new piece at the top."""
+        self.current_type = random.choice(list(PIECES.keys()))
+        self.current_rotation = 0
+        self.current_piece = PIECES[self.current_type][self.current_rotation]
+        self.current_row = 0
+        self.current_col = COLS // 2 - 2
 
-        # Random starting column
-        start_col = random.randint(5, COLS - 10)
+        # Check if spawn position is valid (game over condition)
+        if not self.is_valid_position(self.current_row, self.current_col):
+            return False
+        return True
 
-        # Generate frames for this piece falling
-        for y_offset in range(-4, ROWS + 1):
-            frame = {
-                'piece_type': piece_type,
-                'piece_shape': piece_shape,
-                'piece_color': piece_color,
-                'col': start_col,
-                'row': y_offset,
-                'duration': frame_duration,
-            }
-            frames.append(frame)
+    def is_valid_position(self, row, col, piece=None):
+        """Check if piece position is valid."""
+        if piece is None:
+            piece = self.current_piece
+        for dr, dc in piece:
+            r, c = row + dr, col + dc
+            if r < 0 or r >= ROWS or c < 0 or c >= COLS:
+                return False
+            if r >= 0 and self.board[r][c] is not None:
+                return False
+        return True
 
-    return frames
+    def try_rotate(self):
+        """Try to rotate the current piece."""
+        if self.current_type == 'O':
+            return False
+
+        rotations = PIECES[self.current_type]
+        new_rotation = (self.current_rotation + 1) % len(rotations)
+        new_piece = rotations[new_rotation]
+
+        # Try rotation, with wall kicks
+        for offset in [0, -1, 1, -2, 2]:
+            if self.is_valid_position(self.current_row, self.current_col + offset, new_piece):
+                self.current_rotation = new_rotation
+                self.current_piece = new_piece
+                self.current_col += offset
+                return True
+        return False
+
+    def try_move(self, d_row, d_col):
+        """Try to move the piece."""
+        new_row = self.current_row + d_row
+        new_col = self.current_col + d_col
+        if self.is_valid_position(new_row, new_col):
+            self.current_row = new_row
+            self.current_col = new_col
+            return True
+        return False
+
+    def lock_piece(self):
+        """Lock the current piece into the board."""
+        for dr, dc in self.current_piece:
+            r, c = self.current_row + dr, self.current_col + dc
+            if 0 <= r < ROWS:
+                self.board[r][c] = self.current_type
+
+    def clear_lines(self):
+        """Clear completed lines and return count."""
+        lines_to_clear = []
+        for r in range(ROWS):
+            if all(self.board[r][c] is not None for c in range(COLS)):
+                lines_to_clear.append(r)
+
+        for r in lines_to_clear:
+            del self.board[r]
+            self.board.insert(0, [None for _ in range(COLS)])
+
+        return len(lines_to_clear)
+
+    def capture_frame(self):
+        """Capture current game state as a frame."""
+        frame = {
+            'board': copy.deepcopy(self.board),
+            'piece_type': self.current_type,
+            'piece': copy.deepcopy(self.current_piece) if self.current_piece else None,
+            'piece_row': self.current_row,
+            'piece_col': self.current_col,
+        }
+        self.frames.append(frame)
+
+    def simulate_game(self, num_pieces=50):
+        """Simulate a full game."""
+        self.frames = []
+
+        for _ in range(num_pieces):
+            if not self.spawn_piece():
+                # Game over - reset board
+                self.board = [[None for _ in range(COLS)] for _ in range(ROWS)]
+                self.spawn_piece()
+
+            self.capture_frame()
+
+            # Simulate piece falling with occasional moves/rotations
+            while True:
+                # Random actions for variety
+                action = random.random()
+                if action < 0.15:
+                    self.try_move(0, -1)  # Move left
+                elif action < 0.30:
+                    self.try_move(0, 1)   # Move right
+                elif action < 0.40:
+                    self.try_rotate()
+
+                self.capture_frame()
+
+                # Try to move down
+                if not self.try_move(1, 0):
+                    # Can't move down, lock piece
+                    self.lock_piece()
+                    cleared = self.clear_lines()
+                    self.lines_cleared += cleared
+
+                    # Capture frame after locking (and line clear)
+                    self.current_piece = None
+                    self.capture_frame()
+                    break
+
+        return self.frames
 
 
-def create_svg():
-    """Create the complete animated SVG."""
+def create_svg(frames, frame_duration=0.08):
+    """Create animated SVG from game frames."""
     width = COLS * TOTAL_CELL + 20
-    height = ROWS * TOTAL_CELL + 20
+    height = ROWS * TOTAL_CELL + 40
+    total_duration = len(frames) * frame_duration
 
-    base_grid = generate_base_grid()
-    frames = generate_tetris_animation()
+    svg_parts = []
+    svg_parts.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">')
 
-    # Calculate total animation duration
-    total_duration = len(frames) * 0.15
-
-    svg_parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
-        '<style>',
-        '  .cell { rx: 2; ry: 2; }',
-        '  @keyframes tetris-fall {',
-    ]
-
-    # Generate keyframes for each falling piece animation
-    current_time = 0
-    keyframe_percents = []
-
-    for i, frame in enumerate(frames):
-        percent = (i / len(frames)) * 100
-        keyframe_percents.append((percent, frame))
-
-    svg_parts.append('  }')
+    # Styles
+    svg_parts.append('<style>')
+    svg_parts.append('  .cell { rx: 2; ry: 2; }')
+    svg_parts.append('  text { font-family: monospace; }')
     svg_parts.append('</style>')
 
     # Background
     svg_parts.append(f'<rect width="{width}" height="{height}" fill="#0d1117"/>')
 
-    # Draw base contribution grid
+    # Title
+    svg_parts.append(f'<text x="{width/2}" y="15" fill="#58a6ff" font-size="11" text-anchor="middle" font-weight="bold">TETRIS</text>')
+
+    # Grid background
+    svg_parts.append('<g transform="translate(10, 25)">')
     for row in range(ROWS):
         for col in range(COLS):
-            x = col * TOTAL_CELL + 10
-            y = row * TOTAL_CELL + 10
-            color = COLORS[base_grid[row][col]]
-            svg_parts.append(
-                f'<rect class="cell" x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" fill="{color}"/>'
-            )
+            x = col * TOTAL_CELL
+            y = row * TOTAL_CELL
+            svg_parts.append(f'<rect class="cell" x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" fill="{GRID_COLOR}" opacity="0.3"/>')
+    svg_parts.append('</g>')
 
-    # Create animated tetris pieces using CSS animations
-    piece_animations = []
-    time_offset = 0
+    # Animated cells - use CSS keyframes for each cell position
+    svg_parts.append('<g transform="translate(10, 25)">')
 
-    for piece_idx in range(8):
-        piece_type = random.choice(list(PIECES.keys()))
-        piece_shape = PIECES[piece_type]
-        piece_color = PIECE_COLORS[piece_type]
-        start_col = random.randint(5, COLS - 10)
+    # For each cell position, create keyframes based on what's there each frame
+    for row in range(ROWS):
+        for col in range(COLS):
+            x = col * TOTAL_CELL
+            y = row * TOTAL_CELL
 
-        piece_id = f'piece-{piece_idx}'
-        fall_duration = 1.5
+            # Build keyframe values for this cell
+            colors = []
+            for frame in frames:
+                board = frame['board']
+                piece = frame['piece']
+                piece_row = frame['piece_row']
+                piece_col = frame['piece_col']
+                piece_type = frame['piece_type']
 
-        # Create piece group with animation
-        svg_parts.append(f'<g id="{piece_id}">')
-        svg_parts.append(f'  <animateTransform attributeName="transform" type="translate"')
-        svg_parts.append(f'    values="0,-{(ROWS + 4) * TOTAL_CELL};0,{ROWS * TOTAL_CELL}"')
-        svg_parts.append(f'    dur="{fall_duration}s" begin="{time_offset}s"')
-        svg_parts.append(f'    repeatCount="indefinite" calcMode="linear"/>')
+                # Check if current piece occupies this cell
+                cell_color = EMPTY_COLOR
 
-        # Draw piece blocks
-        for (dr, dc) in piece_shape:
-            x = (start_col + dc) * TOTAL_CELL + 10
-            y = dr * TOTAL_CELL + 10
-            svg_parts.append(
-                f'  <rect class="cell" x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" fill="{piece_color}" opacity="0.9"/>'
-            )
+                # First check board
+                if board[row][col] is not None:
+                    cell_color = PIECE_COLORS[board[row][col]]
 
-        svg_parts.append('</g>')
-        time_offset += fall_duration / 2  # Overlap pieces
+                # Then check active piece
+                if piece is not None:
+                    for dr, dc in piece:
+                        pr, pc = piece_row + dr, piece_col + dc
+                        if pr == row and pc == col:
+                            cell_color = PIECE_COLORS[piece_type]
+                            break
 
+                colors.append(cell_color)
+
+            # Only create animated rect if colors change
+            if len(set(colors)) > 1:
+                # Create keyframes string
+                keyframe_values = ';'.join(colors)
+                svg_parts.append(f'<rect class="cell" x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}">')
+                svg_parts.append(f'  <animate attributeName="fill" values="{keyframe_values}" dur="{total_duration}s" repeatCount="indefinite" calcMode="discrete"/>')
+                svg_parts.append('</rect>')
+            else:
+                # Static cell
+                svg_parts.append(f'<rect class="cell" x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" fill="{colors[0]}"/>')
+
+    svg_parts.append('</g>')
     svg_parts.append('</svg>')
 
     return '\n'.join(svg_parts)
 
 
-def create_advanced_svg():
-    """Create a more polished animated SVG with smooth tetris gameplay."""
-    width = COLS * TOTAL_CELL + 20
-    height = ROWS * TOTAL_CELL + 40
-
-    base_grid = generate_base_grid()
-
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
-  <defs>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-
-  <rect width="{width}" height="{height}" fill="#0d1117"/>
-
-  <!-- Title -->
-  <text x="{width/2}" y="15" fill="#58a6ff" font-family="monospace" font-size="10" text-anchor="middle">TETRIS x CONTRIBUTIONS</text>
-
-  <!-- Contribution Grid -->
-  <g transform="translate(0, 25)">
-'''
-
-    # Draw base grid
-    for row in range(ROWS):
-        for col in range(COLS):
-            x = col * TOTAL_CELL + 10
-            y = row * TOTAL_CELL
-            color = COLORS[base_grid[row][col]]
-            svg += f'    <rect class="cell" x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" fill="{color}" rx="2"/>\n'
-
-    # Add animated falling pieces
-    pieces_svg = ""
-    time_offset = 0
-
-    for i in range(6):
-        piece_type = list(PIECES.keys())[i % len(PIECES)]
-        piece_shape = PIECES[piece_type]
-        piece_color = PIECE_COLORS[piece_type]
-        start_col = 5 + (i * 7) % (COLS - 10)
-
-        fall_duration = 2.0 + random.random() * 0.5
-        start_y = -4 * TOTAL_CELL
-        end_y = ROWS * TOTAL_CELL
-
-        pieces_svg += f'''
-    <!-- Piece {i+1}: {piece_type} -->
-    <g filter="url(#glow)">
-      <animateTransform attributeName="transform" type="translate"
-        values="0,{start_y};0,{end_y}"
-        dur="{fall_duration}s" begin="{time_offset}s"
-        repeatCount="indefinite"/>
-'''
-        for (dr, dc) in piece_shape:
-            x = (start_col + dc) * TOTAL_CELL + 10
-            y = dr * TOTAL_CELL
-            pieces_svg += f'      <rect x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" fill="{piece_color}" rx="2" opacity="0.85"/>\n'
-
-        pieces_svg += '    </g>\n'
-        time_offset += fall_duration * 0.4
-
-    svg += pieces_svg
-    svg += '''  </g>
-</svg>'''
-
-    return svg
-
-
 if __name__ == '__main__':
-    svg_content = create_advanced_svg()
+    print("Simulating Tetris game...")
+    game = TetrisGame()
+    frames = game.simulate_game(num_pieces=40)
+    print(f"Generated {len(frames)} frames, cleared {game.lines_cleared} lines")
+
+    print("Creating SVG animation...")
+    svg_content = create_svg(frames, frame_duration=0.1)
 
     with open('tetris-contribution.svg', 'w') as f:
         f.write(svg_content)
