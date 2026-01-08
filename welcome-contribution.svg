@@ -622,11 +622,11 @@
   <rect x="716" y="100" width="10" height="10" rx="2" ry="2" fill="#161b22"/>
 
   <!-- Legend -->
-  <text x="606" y="133" class="legend">Less</text>
-  <rect x="636" y="125" width="10" height="10" rx="2" ry="2" fill="#161b22"/>
-  <rect x="649" y="125" width="10" height="10" rx="2" ry="2" fill="#0e4429"/>
-  <rect x="662" y="125" width="10" height="10" rx="2" ry="2" fill="#006d32"/>
-  <rect x="675" y="125" width="10" height="10" rx="2" ry="2" fill="#26a641"/>
-  <rect x="688" y="125" width="10" height="10" rx="2" ry="2" fill="#39d353"/>
-  <text x="703" y="133" class="legend">More</text>
+  <text x="596" y="133" class="legend">Less</text>
+  <rect x="626" y="125" width="10" height="10" rx="2" ry="2" fill="#161b22"/>
+  <rect x="639" y="125" width="10" height="10" rx="2" ry="2" fill="#0e4429"/>
+  <rect x="652" y="125" width="10" height="10" rx="2" ry="2" fill="#006d32"/>
+  <rect x="665" y="125" width="10" height="10" rx="2" ry="2" fill="#26a641"/>
+  <rect x="678" y="125" width="10" height="10" rx="2" ry="2" fill="#39d353"/>
+  <text x="693" y="133" class="legend">More</text>
 </svg>

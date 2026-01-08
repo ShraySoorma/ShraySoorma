@@ -239,7 +239,7 @@ def create_contribution_svg(frames, fps=120):
 
     # Add legend (Less ... More)
     legend_y = top_margin + grid_height + 15
-    legend_x = left_margin + grid_width - 120  # Position from right
+    legend_x = left_margin + grid_width - 130  # Position from right
 
     svg += f'''
   <!-- Legend -->
