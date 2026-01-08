@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate a GitHub-style contribution graph SVG with animated WELCOME text.
-Matches the exact size of GitHub's contribution graph.
+Matches the exact size of GitHub's contribution graph with month/day labels.
 """
 
 import random
@@ -20,6 +20,16 @@ CONTRIB_COLORS = [
     '#39d353',  # Level 4
 ]
 EMPTY_COLOR = '#161b22'  # GitHub dark mode empty cell
+TEXT_COLOR = '#8b949e'   # GitHub muted text color
+
+# Month labels (approximate positions for 53 weeks)
+MONTHS = [
+    (0, 'Jan'), (4, 'Feb'), (8, 'Mar'), (13, 'Apr'), (17, 'May'), (22, 'Jun'),
+    (26, 'Jul'), (30, 'Aug'), (35, 'Sep'), (39, 'Oct'), (44, 'Nov'), (48, 'Dec')
+]
+
+# Day labels
+DAYS = [(1, 'Mon'), (3, 'Wed'), (5, 'Fri')]
 
 # Letter patterns (7 rows tall to match contribution graph)
 LETTERS = {
@@ -103,57 +113,59 @@ def build_welcome_grid():
     return grid
 
 
-def generate_animation_frames(base_grid, num_frames=60):
-    """Generate frames with typing effect and color pulsing."""
+def generate_animation_frames(base_grid, num_frames=180):
+    """Generate smooth frames with typing effect and color pulsing."""
     frames = []
 
+    # Find all filled cells and sort by column then row for proper reveal
     filled_cells = []
-    for row in range(GRID_ROWS):
-        for col in range(GRID_COLS):
+    for col in range(GRID_COLS):
+        for row in range(GRID_ROWS):
             if base_grid[row][col]:
                 filled_cells.append((row, col))
 
-    filled_cells.sort(key=lambda x: (x[1], x[0]))
+    # Phase 1: Smooth typing reveal (90 frames ~0.75 sec at 120fps)
+    reveal_frames = 90
 
-    # Phase 1: Typing reveal
-    reveal_frames = 30
-    cells_per_frame = max(1, len(filled_cells) // reveal_frames)
-
-    revealed = set()
     for frame_idx in range(reveal_frames):
-        cells_to_reveal = min(cells_per_frame, len(filled_cells) - len(revealed))
-        for _ in range(cells_to_reveal):
-            if len(revealed) < len(filled_cells):
-                revealed.add(filled_cells[len(revealed)])
+        # Calculate how many cells should be revealed by this frame
+        progress = frame_idx / (reveal_frames - 1) if reveal_frames > 1 else 1
+        cells_to_show = int(progress * len(filled_cells))
+
+        revealed = set(filled_cells[:cells_to_show])
 
         frame = []
         for row in range(GRID_ROWS):
             frame_row = []
             for col in range(GRID_COLS):
                 if (row, col) in revealed:
-                    level = random.randint(2, 3)
+                    # Smooth color variation based on position
+                    level = 2 + ((row + col + frame_idx) % 2)
                     frame_row.append(CONTRIB_COLORS[level])
                 else:
                     frame_row.append(EMPTY_COLOR)
             frame.append(frame_row)
         frames.append(frame)
 
-    # Phase 2: Wave pulse
-    pulse_frames = 30
+    # Phase 2: Smooth wave pulse (90 frames)
+    pulse_frames = 90
     for frame_idx in range(pulse_frames):
         frame = []
-        wave_offset = frame_idx / 5.0
+        # Smooth wave using float math
+        wave_offset = frame_idx * 0.15
 
         for row in range(GRID_ROWS):
             frame_row = []
             for col in range(GRID_COLS):
                 if base_grid[row][col]:
-                    wave = (col + wave_offset) % 4
-                    if wave < 1:
+                    # Smooth sine-like wave effect
+                    import math
+                    wave = math.sin((col * 0.3) + wave_offset) * 0.5 + 0.5
+                    if wave > 0.75:
                         level = 3
-                    elif wave < 2:
+                    elif wave > 0.5:
                         level = 2
-                    elif wave < 3:
+                    elif wave > 0.25:
                         level = 1
                     else:
                         level = 2
@@ -166,30 +178,59 @@ def generate_animation_frames(base_grid, num_frames=60):
     return frames
 
 
-def create_contribution_svg(frames, frame_duration=0.12):
-    """Create a clean GitHub-style contribution graph SVG."""
+def create_contribution_svg(frames, fps=120):
+    """Create a clean GitHub-style contribution graph SVG with labels."""
 
-    # Calculate dimensions (matches GitHub's actual graph)
-    width = GRID_COLS * (CELL_SIZE + CELL_GAP) - CELL_GAP
-    height = GRID_ROWS * (CELL_SIZE + CELL_GAP) - CELL_GAP
+    # Layout offsets for labels
+    left_margin = 35  # Space for day labels
+    top_margin = 20   # Space for month labels
 
+    # Calculate grid dimensions
+    grid_width = GRID_COLS * (CELL_SIZE + CELL_GAP) - CELL_GAP
+    grid_height = GRID_ROWS * (CELL_SIZE + CELL_GAP) - CELL_GAP
+
+    # Total SVG dimensions
+    width = grid_width + left_margin
+    height = grid_height + top_margin
+
+    frame_duration = 1.0 / fps
     total_duration = len(frames) * frame_duration
 
     svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+  <style>
+    .month {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 10px; }}
+    .day {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 10px; }}
+  </style>
+
+  <!-- Month labels -->
 '''
+
+    # Add month labels
+    for col, month in MONTHS:
+        x = left_margin + col * (CELL_SIZE + CELL_GAP)
+        svg += f'  <text x="{x}" y="12" class="month">{month}</text>\n'
+
+    svg += '\n  <!-- Day labels -->\n'
+
+    # Add day labels
+    for row, day in DAYS:
+        y = top_margin + row * (CELL_SIZE + CELL_GAP) + 9  # +9 to vertically center
+        svg += f'  <text x="0" y="{y}" class="day">{day}</text>\n'
+
+    svg += '\n  <!-- Contribution grid -->\n'
 
     # Create cells
     for row in range(GRID_ROWS):
         for col in range(GRID_COLS):
-            x = col * (CELL_SIZE + CELL_GAP)
-            y = row * (CELL_SIZE + CELL_GAP)
+            x = left_margin + col * (CELL_SIZE + CELL_GAP)
+            y = top_margin + row * (CELL_SIZE + CELL_GAP)
 
             colors = [frame[row][col] for frame in frames]
 
             if len(set(colors)) > 1:
                 keyframe_values = ';'.join(colors)
                 svg += f'''  <rect x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2">
-    <animate attributeName="fill" values="{keyframe_values}" dur="{total_duration}s" repeatCount="indefinite" calcMode="discrete"/>
+    <animate attributeName="fill" values="{keyframe_values}" dur="{total_duration:.3f}s" repeatCount="indefinite" calcMode="discrete"/>
   </rect>
 '''
             else:
@@ -201,15 +242,17 @@ def create_contribution_svg(frames, frame_duration=0.12):
 
 
 if __name__ == '__main__':
+    import math
+
     print("Building WELCOME contribution grid...")
     base_grid = build_welcome_grid()
 
-    print("Generating animation frames...")
-    frames = generate_animation_frames(base_grid, num_frames=60)
+    print("Generating animation frames at 120fps...")
+    frames = generate_animation_frames(base_grid, num_frames=180)
     print(f"Generated {len(frames)} frames")
 
     print("Creating contribution graph SVG...")
-    svg_content = create_contribution_svg(frames, frame_duration=0.12)
+    svg_content = create_contribution_svg(frames, fps=120)
 
     with open('welcome-contribution.svg', 'w') as f:
         f.write(svg_content)
