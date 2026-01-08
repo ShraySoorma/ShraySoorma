@@ -4,7 +4,7 @@ Generate a GitHub-style contribution graph SVG with animated WELCOME text.
 Matches the exact size of GitHub's contribution graph with month/day labels.
 """
 
-import random
+import math
 
 # GitHub contribution graph dimensions (actual GitHub sizes)
 GRID_COLS = 53   # 53 weeks in a year
@@ -20,7 +20,7 @@ CONTRIB_COLORS = [
     '#39d353',  # Level 4
 ]
 EMPTY_COLOR = '#161b22'  # GitHub dark mode empty cell
-TEXT_COLOR = '#8b949e'   # GitHub muted text color
+TEXT_COLOR = '#ffffff'   # White text for labels
 
 # Month labels (approximate positions for 53 weeks)
 MONTHS = [
@@ -113,7 +113,7 @@ def build_welcome_grid():
     return grid
 
 
-def generate_animation_frames(base_grid, num_frames=180):
+def generate_animation_frames(base_grid, num_frames=300):
     """Generate smooth frames with typing effect and color pulsing."""
     frames = []
 
@@ -124,8 +124,8 @@ def generate_animation_frames(base_grid, num_frames=180):
             if base_grid[row][col]:
                 filled_cells.append((row, col))
 
-    # Phase 1: Smooth typing reveal (90 frames ~0.75 sec at 120fps)
-    reveal_frames = 90
+    # Phase 1: Slower typing reveal (180 frames ~1.5 sec at 120fps)
+    reveal_frames = 180
 
     for frame_idx in range(reveal_frames):
         # Calculate how many cells should be revealed by this frame
@@ -147,8 +147,8 @@ def generate_animation_frames(base_grid, num_frames=180):
             frame.append(frame_row)
         frames.append(frame)
 
-    # Phase 2: Smooth wave pulse (90 frames)
-    pulse_frames = 90
+    # Phase 2: Smooth wave pulse (120 frames)
+    pulse_frames = 120
     for frame_idx in range(pulse_frames):
         frame = []
         # Smooth wave using float math
@@ -159,7 +159,6 @@ def generate_animation_frames(base_grid, num_frames=180):
             for col in range(GRID_COLS):
                 if base_grid[row][col]:
                     # Smooth sine-like wave effect
-                    import math
                     wave = math.sin((col * 0.3) + wave_offset) * 0.5 + 0.5
                     if wave > 0.75:
                         level = 3
@@ -182,8 +181,9 @@ def create_contribution_svg(frames, fps=120):
     """Create a clean GitHub-style contribution graph SVG with labels."""
 
     # Layout offsets for labels
-    left_margin = 35  # Space for day labels
-    top_margin = 20   # Space for month labels
+    left_margin = 40  # Space for day labels
+    top_margin = 22   # Space for month labels
+    bottom_margin = 25  # Space for legend
 
     # Calculate grid dimensions
     grid_width = GRID_COLS * (CELL_SIZE + CELL_GAP) - CELL_GAP
@@ -191,15 +191,16 @@ def create_contribution_svg(frames, fps=120):
 
     # Total SVG dimensions
     width = grid_width + left_margin
-    height = grid_height + top_margin
+    height = grid_height + top_margin + bottom_margin
 
     frame_duration = 1.0 / fps
     total_duration = len(frames) * frame_duration
 
     svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
   <style>
-    .month {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 10px; }}
-    .day {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 10px; }}
+    .month {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }}
+    .day {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }}
+    .legend {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; }}
   </style>
 
   <!-- Month labels -->
@@ -208,7 +209,7 @@ def create_contribution_svg(frames, fps=120):
     # Add month labels
     for col, month in MONTHS:
         x = left_margin + col * (CELL_SIZE + CELL_GAP)
-        svg += f'  <text x="{x}" y="12" class="month">{month}</text>\n'
+        svg += f'  <text x="{x}" y="14" class="month">{month}</text>\n'
 
     svg += '\n  <!-- Day labels -->\n'
 
@@ -236,19 +237,32 @@ def create_contribution_svg(frames, fps=120):
             else:
                 svg += f'  <rect x="{x}" y="{y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{colors[0]}"/>\n'
 
+    # Add legend (Less ... More)
+    legend_y = top_margin + grid_height + 15
+    legend_x = left_margin + grid_width - 120  # Position from right
+
+    svg += f'''
+  <!-- Legend -->
+  <text x="{legend_x}" y="{legend_y + 8}" class="legend">Less</text>
+  <rect x="{legend_x + 30}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{EMPTY_COLOR}"/>
+  <rect x="{legend_x + 43}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{CONTRIB_COLORS[0]}"/>
+  <rect x="{legend_x + 56}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{CONTRIB_COLORS[1]}"/>
+  <rect x="{legend_x + 69}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{CONTRIB_COLORS[2]}"/>
+  <rect x="{legend_x + 82}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{CONTRIB_COLORS[3]}"/>
+  <text x="{legend_x + 97}" y="{legend_y + 8}" class="legend">More</text>
+'''
+
     svg += '</svg>'
 
     return svg
 
 
 if __name__ == '__main__':
-    import math
-
     print("Building WELCOME contribution grid...")
     base_grid = build_welcome_grid()
 
     print("Generating animation frames at 120fps...")
-    frames = generate_animation_frames(base_grid, num_frames=180)
+    frames = generate_animation_frames(base_grid, num_frames=300)
     print(f"Generated {len(frames)} frames")
 
     print("Creating contribution graph SVG...")
