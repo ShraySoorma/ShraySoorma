@@ -1,4 +1,4 @@
 
 <p align="center">
-  <img src="./welcome-contribution.svg" alt="Welcome Contribution Graph" />
+  <img src="./pong-contribution.svg" alt="Pong Contribution Graph" />
 </p>
