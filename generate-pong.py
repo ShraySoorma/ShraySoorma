@@ -150,13 +150,21 @@ class PongGame:
         return grid
 
 
-def simulate_pong_game(num_frames=480):
-    """Run Pong game simulation and capture each frame."""
+def simulate_pong_game(num_game_updates=480, frames_per_update=2):
+    """Run Pong game simulation and capture each frame.
+
+    Args:
+        num_game_updates: Number of game state updates
+        frames_per_update: Render frames per game update (higher = slower game)
+    """
     game = PongGame()
     frames = []
 
-    for _ in range(num_frames):
-        frames.append(game.get_frame())
+    for _ in range(num_game_updates):
+        # Render same frame multiple times for slower movement
+        frame = game.get_frame()
+        for _ in range(frames_per_update):
+            frames.append(frame)
         game.update()
 
     return frames
@@ -244,11 +252,13 @@ def create_contribution_svg(frames, fps=120):
 
 if __name__ == '__main__':
     print("Simulating Pong game...")
-    frames = simulate_pong_game(num_frames=480)
+    # 480 game updates, 2 render frames each = 960 total frames
+    # At 60fps = 16 second loop, half the original speed
+    frames = simulate_pong_game(num_game_updates=480, frames_per_update=2)
     print(f"Generated {len(frames)} frames")
 
     print("Creating contribution graph SVG...")
-    svg_content = create_contribution_svg(frames, fps=120)
+    svg_content = create_contribution_svg(frames, fps=60)
 
     with open('pong-contribution.svg', 'w') as f:
         f.write(svg_content)
