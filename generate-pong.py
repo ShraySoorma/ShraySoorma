@@ -368,14 +368,14 @@ def create_contribution_svg(frames, scores, fps=120):
 
 if __name__ == '__main__':
     print("Simulating Pong game...")
-    # 360 game updates, 2 frames per update at 24fps = 30 seconds total
-    # Smoother animation with faster gameplay
-    frames, scores = simulate_pong_game(num_game_updates=360, frames_per_update=2)
+    # 360 game updates, 4 frames per update at 165fps = ~8.7 seconds total
+    # Ultra-smooth animation
+    frames, scores = simulate_pong_game(num_game_updates=360, frames_per_update=4)
     print(f"Generated {len(frames)} frames")
     print(f"Final score: {scores[-1]}")
 
     print("Creating contribution graph SVG...")
-    svg_content = create_contribution_svg(frames, scores, fps=24)
+    svg_content = create_contribution_svg(frames, scores, fps=165)
 
     with open('pong-contribution.svg', 'w') as f:
         f.write(svg_content)
