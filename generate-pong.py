@@ -232,7 +232,7 @@ def create_contribution_svg(frames, scores, fps=120):
 
     # Layout offsets for labels
     left_margin = 40  # Space for day labels
-    top_margin = 22   # Space for month labels + score
+    top_margin = 40   # Space for score + month labels
     bottom_margin = 25  # Space for legend
 
     # Calculate grid dimensions
@@ -273,10 +273,10 @@ def create_contribution_svg(frames, scores, fps=120):
     score_x = left_margin + grid_width // 2
 
     # Create animated text for each score period
+    score_y = 14  # Score at very top
     for score_text, start, end in score_changes:
         start_time = start * frame_duration
         end_time = end * frame_duration
-        duration = end_time - start_time
 
         # Calculate keyTimes and values for opacity animation
         # opacity is 1 during this score's period, 0 otherwise
@@ -284,12 +284,12 @@ def create_contribution_svg(frames, scores, fps=120):
             # First score - starts visible
             if end == len(scores):
                 # Only one score throughout - no animation needed
-                svg += f'  <text x="{score_x}" y="14" text-anchor="middle" class="score">{score_text}</text>\n'
+                svg += f'  <text x="{score_x}" y="{score_y}" text-anchor="middle" class="score">{score_text}</text>\n'
             else:
                 # Visible from start, then hidden
                 key_times = f"0;{end_time / total_duration:.6f};1"
                 values = "1;0;0"
-                svg += f'''  <text x="{score_x}" y="14" text-anchor="middle" class="score" opacity="1">{score_text}
+                svg += f'''  <text x="{score_x}" y="{score_y}" text-anchor="middle" class="score" opacity="1">{score_text}
     <animate attributeName="opacity" values="{values}" keyTimes="{key_times}" dur="{total_duration:.3f}s" repeatCount="indefinite" calcMode="discrete"/>
   </text>
 '''
@@ -297,7 +297,7 @@ def create_contribution_svg(frames, scores, fps=120):
             # Last score - ends visible
             key_times = f"0;{start_time / total_duration:.6f};1"
             values = "0;1;1"
-            svg += f'''  <text x="{score_x}" y="14" text-anchor="middle" class="score" opacity="0">{score_text}
+            svg += f'''  <text x="{score_x}" y="{score_y}" text-anchor="middle" class="score" opacity="0">{score_text}
     <animate attributeName="opacity" values="{values}" keyTimes="{key_times}" dur="{total_duration:.3f}s" repeatCount="indefinite" calcMode="discrete"/>
   </text>
 '''
@@ -305,7 +305,7 @@ def create_contribution_svg(frames, scores, fps=120):
             # Middle score - hidden, then visible, then hidden
             key_times = f"0;{start_time / total_duration:.6f};{end_time / total_duration:.6f};1"
             values = "0;1;0;0"
-            svg += f'''  <text x="{score_x}" y="14" text-anchor="middle" class="score" opacity="0">{score_text}
+            svg += f'''  <text x="{score_x}" y="{score_y}" text-anchor="middle" class="score" opacity="0">{score_text}
     <animate attributeName="opacity" values="{values}" keyTimes="{key_times}" dur="{total_duration:.3f}s" repeatCount="indefinite" calcMode="discrete"/>
   </text>
 '''
@@ -314,10 +314,11 @@ def create_contribution_svg(frames, scores, fps=120):
   <!-- Month labels -->
 '''
 
-    # Add month labels
+    # Add month labels (below score)
+    month_y = 32
     for col, month in MONTHS:
         x = left_margin + col * (CELL_SIZE + CELL_GAP)
-        svg += f'  <text x="{x}" y="14" class="month">{month}</text>\n'
+        svg += f'  <text x="{x}" y="{month_y}" class="month">{month}</text>\n'
 
     svg += '\n  <!-- Day labels -->\n'
 
@@ -367,14 +368,14 @@ def create_contribution_svg(frames, scores, fps=120):
 
 if __name__ == '__main__':
     print("Simulating Pong game...")
-    # 720 game updates at 6fps = 120 seconds total (2 minutes)
-    # Ball moves 1 cell every ~167ms (very slow, easy to watch)
-    frames, scores = simulate_pong_game(num_game_updates=720, frames_per_update=1)
+    # 360 game updates, 2 frames per update at 24fps = 30 seconds total
+    # Smoother animation with faster gameplay
+    frames, scores = simulate_pong_game(num_game_updates=360, frames_per_update=2)
     print(f"Generated {len(frames)} frames")
     print(f"Final score: {scores[-1]}")
 
     print("Creating contribution graph SVG...")
-    svg_content = create_contribution_svg(frames, scores, fps=6)
+    svg_content = create_contribution_svg(frames, scores, fps=24)
 
     with open('pong-contribution.svg', 'w') as f:
         f.write(svg_content)
