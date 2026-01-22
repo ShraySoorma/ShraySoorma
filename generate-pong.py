@@ -252,13 +252,13 @@ def create_contribution_svg(frames, fps=120):
 
 if __name__ == '__main__':
     print("Simulating Pong game...")
-    # 480 game updates, 10 render frames each = 4800 total frames
-    # At 60fps = 80 second loop, much slower and easier to watch
-    frames = simulate_pong_game(num_game_updates=480, frames_per_update=10)
+    # 480 game updates at 6fps = 80 seconds total
+    # Ball moves 1 cell every ~167ms (very slow, easy to watch)
+    frames = simulate_pong_game(num_game_updates=480, frames_per_update=1)
     print(f"Generated {len(frames)} frames")
 
     print("Creating contribution graph SVG...")
-    svg_content = create_contribution_svg(frames, fps=60)
+    svg_content = create_contribution_svg(frames, fps=6)
 
     with open('pong-contribution.svg', 'w') as f:
         f.write(svg_content)
