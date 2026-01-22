@@ -57,12 +57,14 @@ class PongGame:
         self.right_score = 0
         self.game_just_ended = False
 
-        # Miss logic - determines if paddle will miss on this rally
+        # Miss logic - when True, paddle reacts late and can't reach ball in time
         # 85% chance to miss for faster scoring
         self.will_miss_left = random.random() < 0.85
         self.will_miss_right = random.random() < 0.85
-        self.miss_direction_left = random.choice([-1, 1])  # Wrong direction to move
-        self.miss_direction_right = random.choice([-1, 1])
+        # Reaction delay - paddle won't start moving until ball is this close
+        # Lower number = less time to react = more likely to miss
+        self.react_delay_left = random.randint(5, 10) if self.will_miss_left else 26
+        self.react_delay_right = random.randint(5, 10) if self.will_miss_right else 26
 
     def _clamp_paddle(self, y):
         """Keep paddle within grid bounds."""
@@ -81,11 +83,11 @@ class PongGame:
         # Reset paddles to center
         self.left_paddle_y = (GRID_ROWS - PADDLE_HEIGHT) // 2
         self.right_paddle_y = (GRID_ROWS - PADDLE_HEIGHT) // 2
-        # Decide if next rally will have a miss
-        self.will_miss_left = random.random() < 0.75
-        self.will_miss_right = random.random() < 0.75
-        self.miss_direction_left = random.choice([-1, 1])
-        self.miss_direction_right = random.choice([-1, 1])
+        # Decide if next rally will have a miss (paddle reacts late)
+        self.will_miss_left = random.random() < 0.85
+        self.will_miss_right = random.random() < 0.85
+        self.react_delay_left = random.randint(5, 10) if self.will_miss_left else 26
+        self.react_delay_right = random.randint(5, 10) if self.will_miss_right else 26
 
     def reset_game(self):
         """Reset entire game when someone wins (reaches 11 points)."""
@@ -101,20 +103,31 @@ class PongGame:
         """Return current score as formatted string."""
         return f"{self.left_score} - {self.right_score}"
 
+    def get_winner_message(self):
+        """Return winner message if game ended."""
+        if self.left_score >= 11:
+            return "Left Wins!"
+        elif self.right_score >= 11:
+            return "Right Wins!"
+        return None
+
     def update(self):
         """Update game state for one frame."""
-        # Move paddles toward ball (or away if missing)
+        # Both paddles try to track the ball (looks realistic)
+        # But when will_miss is True, they track the WRONG position (misjudge)
+
         # Left paddle
         if self.ball_x < GRID_COLS // 2:
-            target_y = self.ball_y - PADDLE_HEIGHT // 2
-            if self.will_miss_left:
-                # Move AWAY from ball
-                if self.left_paddle_y < target_y:
-                    self.left_paddle_y -= 1
-                elif self.left_paddle_y > target_y:
+            if self.will_miss_left and self.ball_x < 15:
+                # Misjudge - move to wrong position (opposite of where ball is going)
+                wrong_target = (GRID_ROWS - 1 - self.ball_y) - PADDLE_HEIGHT // 2
+                if self.left_paddle_y < wrong_target:
                     self.left_paddle_y += 1
+                elif self.left_paddle_y > wrong_target:
+                    self.left_paddle_y -= 1
             else:
                 # Track ball normally
+                target_y = self.ball_y - PADDLE_HEIGHT // 2
                 if self.left_paddle_y < target_y:
                     self.left_paddle_y += 1
                 elif self.left_paddle_y > target_y:
@@ -122,15 +135,16 @@ class PongGame:
 
         # Right paddle
         if self.ball_x >= GRID_COLS // 2:
-            target_y = self.ball_y - PADDLE_HEIGHT // 2
-            if self.will_miss_right:
-                # Move AWAY from ball
-                if self.right_paddle_y < target_y:
-                    self.right_paddle_y -= 1
-                elif self.right_paddle_y > target_y:
+            if self.will_miss_right and self.ball_x > 38:
+                # Misjudge - move to wrong position (opposite of where ball is going)
+                wrong_target = (GRID_ROWS - 1 - self.ball_y) - PADDLE_HEIGHT // 2
+                if self.right_paddle_y < wrong_target:
                     self.right_paddle_y += 1
+                elif self.right_paddle_y > wrong_target:
+                    self.right_paddle_y -= 1
             else:
                 # Track ball normally
+                target_y = self.ball_y - PADDLE_HEIGHT // 2
                 if self.right_paddle_y < target_y:
                     self.right_paddle_y += 1
                 elif self.right_paddle_y > target_y:
@@ -219,7 +233,7 @@ class PongGame:
         return grid
 
 
-def simulate_pong_game(frames_per_update=4, max_updates=80000):
+def simulate_pong_game(frames_per_update=4, max_updates=150000):
     """Run Pong game simulation until one player reaches 11 points.
 
     Args:
@@ -252,9 +266,16 @@ def simulate_pong_game(frames_per_update=4, max_updates=80000):
             # Capture the winning score frame
             frame = game.get_frame()
             score = game.get_score()
-            for _ in range(frames_per_update * 10):  # Show winning score longer
+            winner_msg = game.get_winner_message()
+            # Show final score briefly
+            for _ in range(frames_per_update * 5):
                 frames.append(frame)
                 scores.append(score)
+            # Show winner message
+            if winner_msg:
+                for _ in range(frames_per_update * 15):  # Show winner message longer
+                    frames.append(frame)
+                    scores.append(winner_msg)
             break
 
     return frames, scores
@@ -413,7 +434,7 @@ if __name__ == '__main__':
     print(f"Game ended with score: {scores[-1]}")
 
     print("Creating contribution graph SVG...")
-    svg_content = create_contribution_svg(frames, scores, fps=165)
+    svg_content = create_contribution_svg(frames, scores, fps=60)  # Slower, smoother
 
     with open('pong-contribution.svg', 'w') as f:
         f.write(svg_content)
