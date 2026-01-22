@@ -32,7 +32,7 @@ MONTHS = [
 DAYS = [(1, 'Mon'), (3, 'Wed'), (5, 'Fri')]
 
 # Pong game constants
-PADDLE_HEIGHT = 4
+PADDLE_HEIGHT = 2
 LEFT_PADDLE_COL = 1
 RIGHT_PADDLE_COL = 51
 CENTER_COL = 26
@@ -55,11 +55,12 @@ class PongGame:
         # Score tracking
         self.left_score = 0
         self.right_score = 0
+        self.game_just_ended = False
 
         # Miss logic - determines if paddle will miss on this rally
-        # Higher probability for more dynamic scoring
-        self.will_miss_left = random.random() < 0.5
-        self.will_miss_right = random.random() < 0.5
+        # 85% chance to miss for faster scoring
+        self.will_miss_left = random.random() < 0.85
+        self.will_miss_right = random.random() < 0.85
         self.miss_direction_left = random.choice([-1, 1])  # Wrong direction to move
         self.miss_direction_right = random.choice([-1, 1])
 
@@ -81,10 +82,20 @@ class PongGame:
         self.left_paddle_y = (GRID_ROWS - PADDLE_HEIGHT) // 2
         self.right_paddle_y = (GRID_ROWS - PADDLE_HEIGHT) // 2
         # Decide if next rally will have a miss
-        self.will_miss_left = random.random() < 0.4
-        self.will_miss_right = random.random() < 0.4
+        self.will_miss_left = random.random() < 0.75
+        self.will_miss_right = random.random() < 0.75
         self.miss_direction_left = random.choice([-1, 1])
         self.miss_direction_right = random.choice([-1, 1])
+
+    def reset_game(self):
+        """Reset entire game when someone wins (reaches 11 points)."""
+        self.game_just_ended = True
+        # Don't reset scores yet - let the winning score be captured
+        # Scores will be reset when a new game object is created
+
+    def check_winner(self):
+        """Check if someone has won (reached 11 points). Returns True if game over."""
+        return self.left_score >= 11 or self.right_score >= 11
 
     def get_score(self):
         """Return current score as formatted string."""
@@ -92,26 +103,34 @@ class PongGame:
 
     def update(self):
         """Update game state for one frame."""
-        # Move paddles toward ball with slight delay for realism
-        # Left paddle tracks ball when ball is on left side
+        # Move paddles toward ball (or away if missing)
+        # Left paddle
         if self.ball_x < GRID_COLS // 2:
             target_y = self.ball_y - PADDLE_HEIGHT // 2
-            # If will_miss and ball approaching, move wrong direction starting earlier
-            if self.will_miss_left and self.ball_vx < 0 and self.ball_x < GRID_COLS * 2 // 5:
-                self.left_paddle_y += self.miss_direction_left
+            if self.will_miss_left:
+                # Move AWAY from ball
+                if self.left_paddle_y < target_y:
+                    self.left_paddle_y -= 1
+                elif self.left_paddle_y > target_y:
+                    self.left_paddle_y += 1
             else:
+                # Track ball normally
                 if self.left_paddle_y < target_y:
                     self.left_paddle_y += 1
                 elif self.left_paddle_y > target_y:
                     self.left_paddle_y -= 1
 
-        # Right paddle tracks ball when ball is on right side
+        # Right paddle
         if self.ball_x >= GRID_COLS // 2:
             target_y = self.ball_y - PADDLE_HEIGHT // 2
-            # If will_miss and ball approaching, move wrong direction starting earlier
-            if self.will_miss_right and self.ball_vx > 0 and self.ball_x > GRID_COLS * 3 // 5:
-                self.right_paddle_y += self.miss_direction_right
+            if self.will_miss_right:
+                # Move AWAY from ball
+                if self.right_paddle_y < target_y:
+                    self.right_paddle_y -= 1
+                elif self.right_paddle_y > target_y:
+                    self.right_paddle_y += 1
             else:
+                # Track ball normally
                 if self.right_paddle_y < target_y:
                     self.right_paddle_y += 1
                 elif self.right_paddle_y > target_y:
@@ -146,7 +165,10 @@ class PongGame:
             # Ball missed paddle - score for right player
             if not hit_paddle and next_x < 0:
                 self.right_score += 1
-                self.reset_ball()
+                if self.check_winner():
+                    self.reset_game()
+                else:
+                    self.reset_ball()
                 return  # Frame ends after scoring
 
         # Check right paddle collision
@@ -162,7 +184,10 @@ class PongGame:
             # Ball missed paddle - score for left player
             if not hit_paddle and next_x >= GRID_COLS:
                 self.left_score += 1
-                self.reset_ball()
+                if self.check_winner():
+                    self.reset_game()
+                else:
+                    self.reset_ball()
                 return  # Frame ends after scoring
 
         self.ball_x = next_x
@@ -194,12 +219,12 @@ class PongGame:
         return grid
 
 
-def simulate_pong_game(num_game_updates=480, frames_per_update=2):
-    """Run Pong game simulation and capture each frame.
+def simulate_pong_game(frames_per_update=4, max_updates=80000):
+    """Run Pong game simulation until one player reaches 11 points.
 
     Args:
-        num_game_updates: Number of game state updates
-        frames_per_update: Render frames per game update (higher = slower game)
+        frames_per_update: Render frames per game update (higher = slower movement)
+        max_updates: Safety limit to prevent infinite loops
 
     Returns:
         tuple: (frames, scores) where frames is list of grid states and
@@ -208,15 +233,29 @@ def simulate_pong_game(num_game_updates=480, frames_per_update=2):
     game = PongGame()
     frames = []
     scores = []
+    updates = 0
 
-    for _ in range(num_game_updates):
-        # Render same frame multiple times for slower movement
+    # Run until someone wins (reaches 11 points)
+    while updates < max_updates:
         frame = game.get_frame()
         score = game.get_score()
+
         for _ in range(frames_per_update):
             frames.append(frame)
             scores.append(score)
+
         game.update()
+        updates += 1
+
+        # Check if game just ended (someone reached 11)
+        if game.game_just_ended:
+            # Capture the winning score frame
+            frame = game.get_frame()
+            score = game.get_score()
+            for _ in range(frames_per_update * 10):  # Show winning score longer
+                frames.append(frame)
+                scores.append(score)
+            break
 
     return frames, scores
 
@@ -367,12 +406,11 @@ def create_contribution_svg(frames, scores, fps=120):
 
 
 if __name__ == '__main__':
-    print("Simulating Pong game...")
-    # 360 game updates, 4 frames per update at 165fps = ~8.7 seconds total
-    # Ultra-smooth animation
-    frames, scores = simulate_pong_game(num_game_updates=360, frames_per_update=4)
+    print("Simulating Pong game to 11 points...")
+    # Run until someone wins (first to 11 points)
+    frames, scores = simulate_pong_game(frames_per_update=4)
     print(f"Generated {len(frames)} frames")
-    print(f"Final score: {scores[-1]}")
+    print(f"Game ended with score: {scores[-1]}")
 
     print("Creating contribution graph SVG...")
     svg_content = create_contribution_svg(frames, scores, fps=165)
