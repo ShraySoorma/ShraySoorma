@@ -32,7 +32,7 @@ MONTHS = [
 DAYS = [(1, 'Mon'), (3, 'Wed'), (5, 'Fri')]
 
 # Pong game constants
-PADDLE_HEIGHT = 3
+PADDLE_HEIGHT = 4
 LEFT_PADDLE_COL = 1
 RIGHT_PADDLE_COL = 51
 CENTER_COL = 26
@@ -232,7 +232,7 @@ def create_contribution_svg(frames, scores, fps=120):
 
     # Layout offsets for labels
     left_margin = 40  # Space for day labels
-    top_margin = 40   # Space for score + month labels
+    top_margin = 50   # Space for score + month labels
     bottom_margin = 25  # Space for legend
 
     # Calculate grid dimensions
@@ -315,7 +315,7 @@ def create_contribution_svg(frames, scores, fps=120):
 '''
 
     # Add month labels (below score)
-    month_y = 32
+    month_y = 42
     for col, month in MONTHS:
         x = left_margin + col * (CELL_SIZE + CELL_GAP)
         svg += f'  <text x="{x}" y="{month_y}" class="month">{month}</text>\n'
