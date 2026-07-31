@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.linkedin.com/in/shraysoorma"><img src="btn-linkedin.svg" alt="LinkedIn"/></a>
+  <a href="https://www.linkedin.com/in/shray-soorma/"><img src="btn-linkedin.svg" alt="LinkedIn"/></a>
 </p>
 
 ---
