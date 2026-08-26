@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://shraysoorma.github.io"><img src="btn-site.svg" alt="Terminal"/></a>
   <a href="https://www.linkedin.com/in/shray-soorma/"><img src="btn-linkedin.svg" alt="LinkedIn"/></a>
 </p>
 
