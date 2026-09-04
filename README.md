@@ -10,9 +10,6 @@
 ---
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./pong-contribution.svg">
-    <source media="(prefers-color-scheme: light)" srcset="./pong-contribution-light.svg">
-    <img src="./pong-contribution-light.svg" alt="Animated Pong contribution graph">
-  </picture>
+  <img src="./pong-contribution-light.svg#gh-light-mode-only" alt="Animated Pong contribution graph">
+  <img src="./pong-contribution.svg#gh-dark-mode-only" alt="Animated Pong contribution graph">
 </p>
