@@ -22,6 +22,11 @@ CONTRIB_COLORS = [
 EMPTY_COLOR = '#161b22'  # GitHub dark mode empty cell
 TEXT_COLOR = '#ffffff'   # White text for labels
 
+# GitHub contribution colors for light mode.
+LIGHT_CONTRIB_COLORS = ['#9be9a8', '#40c463', '#30a14e', '#216e39']
+LIGHT_EMPTY_COLOR = '#ebedf0'
+LIGHT_TEXT_COLOR = '#57606a'
+
 # Month labels (approximate positions for 53 weeks)
 MONTHS = [
     (0, 'Jan'), (4, 'Feb'), (8, 'Mar'), (13, 'Apr'), (17, 'May'), (22, 'Jun'),
@@ -281,7 +286,14 @@ def simulate_pong_game(frames_per_update=4, max_updates=150000):
     return frames, scores
 
 
-def create_contribution_svg(frames, scores, fps=120):
+def create_contribution_svg(
+    frames,
+    scores,
+    fps=120,
+    contrib_colors=CONTRIB_COLORS,
+    empty_color=EMPTY_COLOR,
+    text_color=TEXT_COLOR,
+):
     """Create a clean GitHub-style contribution graph SVG with labels and score.
 
     Args:
@@ -308,10 +320,10 @@ def create_contribution_svg(frames, scores, fps=120):
 
     svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
   <style>
-    .month {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }}
-    .day {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }}
-    .legend {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; }}
-    .score {{ fill: {TEXT_COLOR}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; font-weight: bold; }}
+    .month {{ fill: {text_color}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }}
+    .day {{ fill: {text_color}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }}
+    .legend {{ fill: {text_color}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; }}
+    .score {{ fill: {text_color}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; font-weight: bold; }}
   </style>
 
   <!-- Score counter -->
@@ -395,7 +407,8 @@ def create_contribution_svg(frames, scores, fps=120):
             x = left_margin + col * (CELL_SIZE + CELL_GAP)
             y = top_margin + row * (CELL_SIZE + CELL_GAP)
 
-            colors = [frame[row][col] for frame in frames]
+            color_map = {EMPTY_COLOR: empty_color, **dict(zip(CONTRIB_COLORS, contrib_colors))}
+            colors = [color_map[frame[row][col]] for frame in frames]
 
             if len(set(colors)) > 1:
                 keyframe_values = ';'.join(colors)
@@ -413,11 +426,11 @@ def create_contribution_svg(frames, scores, fps=120):
     svg += f'''
   <!-- Legend -->
   <text x="{legend_x}" y="{legend_y + 8}" class="legend">Less</text>
-  <rect x="{legend_x + 30}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{EMPTY_COLOR}"/>
-  <rect x="{legend_x + 43}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{CONTRIB_COLORS[0]}"/>
-  <rect x="{legend_x + 56}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{CONTRIB_COLORS[1]}"/>
-  <rect x="{legend_x + 69}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{CONTRIB_COLORS[2]}"/>
-  <rect x="{legend_x + 82}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{CONTRIB_COLORS[3]}"/>
+  <rect x="{legend_x + 30}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{empty_color}"/>
+  <rect x="{legend_x + 43}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{contrib_colors[0]}"/>
+  <rect x="{legend_x + 56}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{contrib_colors[1]}"/>
+  <rect x="{legend_x + 69}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{contrib_colors[2]}"/>
+  <rect x="{legend_x + 82}" y="{legend_y}" width="{CELL_SIZE}" height="{CELL_SIZE}" rx="2" ry="2" fill="{contrib_colors[3]}"/>
   <text x="{legend_x + 97}" y="{legend_y + 8}" class="legend">More</text>
 '''
 
@@ -435,8 +448,19 @@ if __name__ == '__main__':
 
     print("Creating contribution graph SVG...")
     svg_content = create_contribution_svg(frames, scores, fps=60)  # Slower, smoother
+    light_svg_content = create_contribution_svg(
+        frames,
+        scores,
+        fps=60,
+        contrib_colors=LIGHT_CONTRIB_COLORS,
+        empty_color=LIGHT_EMPTY_COLOR,
+        text_color=LIGHT_TEXT_COLOR,
+    )
 
     with open('pong-contribution.svg', 'w') as f:
         f.write(svg_content)
 
-    print("Generated pong-contribution.svg")
+    with open('pong-contribution-light.svg', 'w') as f:
+        f.write(light_svg_content)
+
+    print("Generated dark and light contribution SVGs")

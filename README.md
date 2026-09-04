@@ -10,5 +10,9 @@
 ---
 
 <p align="center">
-  <img src="./pong-contribution.svg" alt="Pong Contribution Graph" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./pong-contribution.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./pong-contribution-light.svg">
+    <img src="./pong-contribution-light.svg" alt="Animated Pong contribution graph">
+  </picture>
 </p>
