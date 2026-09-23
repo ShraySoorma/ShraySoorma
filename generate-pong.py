@@ -293,6 +293,8 @@ def create_contribution_svg(
     contrib_colors=CONTRIB_COLORS,
     empty_color=EMPTY_COLOR,
     text_color=TEXT_COLOR,
+    background_color='#0d1117',
+    border_color='#30363d',
 ):
     """Create a clean GitHub-style contribution graph SVG with labels and score.
 
@@ -314,17 +316,22 @@ def create_contribution_svg(
     # Total SVG dimensions
     width = grid_width + left_margin
     height = grid_height + top_margin + bottom_margin
+    panel_padding = 18
+    panel_width = width + panel_padding * 2
+    panel_height = height + panel_padding * 2
 
     frame_duration = 1.0 / fps
     total_duration = len(frames) * frame_duration
 
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{panel_width}" height="{panel_height}" viewBox="0 0 {panel_width} {panel_height}">
   <style>
     .month {{ fill: {text_color}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }}
     .day {{ fill: {text_color}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; }}
     .legend {{ fill: {text_color}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; }}
     .score {{ fill: {text_color}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 12px; font-weight: bold; }}
   </style>
+  <rect x="0.5" y="0.5" width="{panel_width - 1}" height="{panel_height - 1}" rx="6" fill="{background_color}" stroke="{border_color}"/>
+  <g transform="translate({panel_padding} {panel_padding})">
 
   <!-- Score counter -->
 '''
@@ -434,7 +441,7 @@ def create_contribution_svg(
   <text x="{legend_x + 97}" y="{legend_y + 8}" class="legend">More</text>
 '''
 
-    svg += '</svg>'
+    svg += '  </g>\n</svg>'
 
     return svg
 
@@ -455,6 +462,8 @@ if __name__ == '__main__':
         contrib_colors=LIGHT_CONTRIB_COLORS,
         empty_color=LIGHT_EMPTY_COLOR,
         text_color=LIGHT_TEXT_COLOR,
+        background_color='#ffffff',
+        border_color='#d0d7de',
     )
 
     with open('pong-contribution.svg', 'w') as f:

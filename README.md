@@ -10,6 +10,5 @@
 ---
 
 <p align="center">
-  <img src="./pong-contribution-light.svg#gh-light-mode-only" alt="Animated Pong contribution graph">
-  <img src="./pong-contribution.svg#gh-dark-mode-only" alt="Animated Pong contribution graph">
+  <img src="./pong-contribution.svg" alt="Animated Pong contribution graph in a dark arcade panel" width="820">
 </p>
