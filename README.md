@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="intro.svg" alt="Classic Windows profile window for Shray Soorma, Software Engineer at Kyndryl" width="820"/>
+  <img src="windows-profile.svg" alt="Classic Windows profile window for Shray Soorma, Software Engineer at Kyndryl" width="820"/>
 </p>
 
 <p align="center">

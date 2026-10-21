@@ -72,7 +72,7 @@ body += bevel(99, 429, 226, 25, True)
 body += '<text x="111" y="446" font-size="12" font-weight="bold">System Properties</text>'
 body += bevel(683, 429, 130, 25, True)
 body += '<text x="748" y="446" text-anchor="middle" font-size="12">Local system</text>'
-(ROOT / 'intro.svg').write_text(svg(820, 460, body, export_width=7680))
+(ROOT / 'windows-profile.svg').write_text(svg(820, 460, body, export_width=7680))
 
 for filename, label, icon in [('btn-site.svg', 'Terminal', 'terminal'), ('btn-linkedin.svg', 'LinkedIn', 'linkedin')]:
     body = bevel(2, 2, 166, 42)
