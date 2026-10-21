@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="intro.svg" alt="Shray Soorma, Software Engineer" width="820"/>
+  <img src="intro.svg" alt="Classic Windows profile window for Shray Soorma, Software Engineer at Kyndryl" width="820"/>
 </p>
 
 <p align="center">
-  <a href="https://shraysoorma.github.io"><img src="btn-site.svg" alt="Terminal"/></a>
-  <a href="https://www.linkedin.com/in/shray-soorma/"><img src="btn-linkedin.svg" alt="LinkedIn"/></a>
+  <a href="https://shraysoorma.github.io"><img src="btn-site.svg" alt="Terminal" width="170" height="46"/></a>
+  <a href="https://www.linkedin.com/in/shray-soorma/"><img src="btn-linkedin.svg" alt="LinkedIn" width="170" height="46"/></a>
 </p>
 
 ---
