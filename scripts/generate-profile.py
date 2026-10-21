@@ -1,6 +1,7 @@
 """Generate the self-contained Windows-style profile artwork."""
 from pathlib import Path
 import base64
+import re
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -21,7 +22,7 @@ def svg(w, h, body, export_width=None):
 
 
 # Desktop and a classic Properties dialog.
-body = '<rect width="820" height="460" fill="#008080"/>'
+body = '<rect width="820" height="750" fill="#008080"/>'
 body += '<rect x="30" y="22" width="772" height="388" fill="#004c4c"/>'
 body += bevel(24, 16, 772, 388)
 body += '''<defs><linearGradient id="title"><stop stop-color="#000080"/><stop offset="1" stop-color="#1084d0"/></linearGradient></defs>
@@ -61,18 +62,42 @@ for x, label in [(503, 'OK'), (597, 'Cancel'), (691, 'Apply')]:
     body += bevel(x, 354, 82, 26)
     color = '#808080' if label == 'Apply' else '#171717'
     body += f'<text x="{x+41}" y="372" text-anchor="middle" font-size="13" style="fill:{color}">{label}</text>'
+# Pong runs in a second window on the same desktop.
+body += '<rect x="30" y="426" width="772" height="278" fill="#004c4c"/>'
+body += bevel(24, 420, 772, 278)
+body += '''<rect x="29" y="425" width="762" height="25" fill="url(#title)"/>
+<rect x="36" y="432" width="16" height="12" fill="#111" stroke="white"/>
+<path d="M40 435 V441 M48 435 V441" stroke="#39d353" stroke-width="2"/>
+<rect x="44" y="438" width="2" height="2" fill="#39d353"/>
+<text x="60" y="443" font-size="14" font-weight="bold" style="fill:white">Pong.exe</text>'''
+for x, label in [(719, '_'), (743, '□'), (767, '×')]:
+    body += bevel(x, 429, 19, 17)
+    body += f'<text x="{x+9.5}" y="443" text-anchor="middle" font-size="15" font-weight="bold">{label}</text>'
+body += '''<text x="40" y="468" font-size="12">Game</text>
+<text x="91" y="468" font-size="12">View</text>
+<text x="136" y="468" font-size="12">Help</text>'''
+body += bevel(39, 478, 742, 192, True)
+pong = (ROOT / 'pong-contribution.svg').read_text()
+pong = re.sub(r'<svg[^>]*>', '<svg xmlns="http://www.w3.org/2000/svg" x="42" y="481" width="736" height="186" viewBox="0 0 762 199">', pong, count=1)
+body += pong
+body += bevel(39, 676, 742, 15, True)
+body += '<text x="46" y="687" font-size="10">Pong contribution animation</text>'
 # Windows taskbar, Start button, and an active application entry.
+body += '<g transform="translate(0 290)">'
 body += bevel(0, 424, 820, 35)
 body += bevel(5, 429, 76, 25)
 for x, y, color in [(13, 435, '#f22'), (22, 435, '#00a000'), (13, 444, '#004dff'), (22, 444, '#ffdf00')]:
     body += f'<rect x="{x}" y="{y}" width="7" height="7" fill="{color}"/>'
 body += '<text x="36" y="447" font-size="14" font-weight="bold">Start</text>'
 body += '<path d="M89 429 V454" stroke="#808080"/><path d="M90 429 V454" stroke="white"/>'
-body += bevel(99, 429, 226, 25, True)
+body += bevel(99, 429, 190, 25)
 body += '<text x="111" y="446" font-size="12" font-weight="bold">System Properties</text>'
+body += bevel(297, 429, 190, 25, True)
+body += '<text x="309" y="446" font-size="12" font-weight="bold">Pong.exe</text>'
 body += bevel(683, 429, 130, 25, True)
 body += '<text x="748" y="446" text-anchor="middle" font-size="12">Local system</text>'
-(ROOT / 'windows-profile.svg').write_text(svg(820, 460, body, export_width=7680))
+body += '</g>'
+(ROOT / 'windows-desktop.svg').write_text(svg(820, 750, body, export_width=7680))
 
 for filename, label, icon in [('btn-site.svg', 'Terminal', 'terminal'), ('btn-linkedin.svg', 'LinkedIn', 'linkedin')]:
     body = bevel(2, 2, 166, 42)
